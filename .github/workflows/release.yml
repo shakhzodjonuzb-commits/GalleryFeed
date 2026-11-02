@@ -1,4 +1,5 @@
-name: Android Release APK
+
+name: Android Release APK qurish
 
 on:
   workflow_dispatch:
@@ -6,67 +7,65 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 jobs:
   build:
-    name: Build signed Release APK
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout source
+      - name: Tekshiruv
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: JDK 21 ni sozlash
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK 36
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android API 36
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
-
-      - name: Set up Gradle 8.14.6
-        uses: gradle/actions/setup-gradle@v6
+      - name: Android SDK 36 ni sozlasg
+        uses: android-actions/setup-android@v4
         with:
-          gradle-version: "8.14.6"
+          packages: 'platform-tools platforms;android-36'
 
-      - name: Prepare release signing key
+      - name: Ruxsat berish
+        run: chmod +x gradlew
+
+      - name: APK yig‘ish
+        run: ./gradlew --no-daemon clean assembleRelease
+
+      - name: Keystoreni dekodlash
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > release-key.jks
+
+      - name: APKni imzolash
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [[ -n "$KEYSTORE_BASE64" && -n "$KEYSTORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
-            KEYSTORE_PATH="$RUNNER_TEMP/galleryfeed-release.jks"
-            echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
-            echo "RELEASE_STORE_FILE=$KEYSTORE_PATH" >> "$GITHUB_ENV"
-            echo "RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "RELEASE_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
-            echo "Release signing key loaded."
-          else
-            echo "::warning::Signing secrets are incomplete. The workflow will build an unsigned release APK. Add all four signing secrets for a signed APK."
-          fi
+          BUILD_TOOLS=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
+          APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner"
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)
 
-      - name: Build Release APK
-        run: gradle --no-daemon --stacktrace assembleRelease
+          "$APKSIGNER" sign \
+            --ks release-key.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:STORE_PASSWORD \
+            --key-pass env:KEY_PASSWORD \
+            --out app-release-signed.apk \
+            "$APK"
 
-      - name: Upload APK artifact
+          "$APKSIGNER" verify --verbose app-release-signed.apk
+
+      - name: Tayyor APKni yuklash
         uses: actions/upload-artifact@v4
         with:
-          name: GalleryFeed-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-          retention-days: 30
+          name: GalleryFeed-Release
+          path: app-release-signed.apk
 
-      - name: Publish GitHub Release for version tags
+      - name: Github Releasega yuklash
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
-          files: app/build/outputs/apk/release/*.apk
+          files: app-release-signed.apk
