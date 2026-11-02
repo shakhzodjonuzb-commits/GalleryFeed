@@ -21,10 +21,14 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Android SDK 36 ni sozlasg
-        uses: android-actions/setup-android@v4
-        with:
-          packages: 'platform-tools platforms;android-36'
+      - name: Set up Android SDK
+      uses: android-actions/setup-android@v4
+      with:
+        packages: 'platform-tools'
+
+      - name: Install Android API 36
+      run: |
+        sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
 
       - name: Ruxsat berish
         run: chmod +x gradlew
