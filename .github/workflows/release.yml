@@ -1,4 +1,3 @@
-
 name: Android Release APK qurish
 
 on:
@@ -12,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Tekshiruv
+      - name: Repositoryni yuklash
         uses: actions/checkout@v4
 
       - name: JDK 21 ni sozlash
@@ -21,16 +20,17 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK
-      uses: android-actions/setup-android@v4
-      with:
-        packages: 'platform-tools'
+      - name: Android SDK ni sozlash
+        uses: android-actions/setup-android@v4
 
-      - name: Install Android API 36
-      run: |
-        sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Android API 36 ni o‘rnatish
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
 
-      - name: Ruxsat berish
+      - name: Gradle ruxsatini berish
         run: chmod +x gradlew
 
       - name: APK yig‘ish
@@ -48,9 +48,13 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          BUILD_TOOLS=$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
+          BUILD_TOOLS="36.0.0"
           APKSIGNER="$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner"
-          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -n 1)
+
+          APK=$(find app/build/outputs/apk/release \
+            -name '*.apk' | head -n 1)
+
+          test -n "$APK"
 
           "$APKSIGNER" sign \
             --ks release-key.jks \
@@ -62,13 +66,17 @@ jobs:
 
           "$APKSIGNER" verify --verbose app-release-signed.apk
 
-      - name: Tayyor APKni yuklash
+      - name: Keystoreni o‘chirish
+        if: always()
+        run: rm -f release-key.jks
+
+      - name: APK artifact sifatida yuklash
         uses: actions/upload-artifact@v4
         with:
           name: GalleryFeed-Release
           path: app-release-signed.apk
 
-      - name: Github Releasega yuklash
+      - name: GitHub Release yaratish
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
