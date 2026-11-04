@@ -1,5 +1,5 @@
 
-name: GalleryFeed Debug Release
+name: APK qurish
 
 on:
   workflow_dispatch:
@@ -12,23 +12,23 @@ permissions:
 
 jobs:
   build:
-    name: Build Debug APK
+    name: Debug APK qurish
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Tekshiruv
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: JDK 21ni sozlash
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
-      - name: Set up Android SDK 36
+      - name: Android SDK 36ni sozlasg
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK packages
+      - name: SDK o‘rnatiliahu
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
